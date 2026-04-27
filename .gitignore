@@ -1,4 +1,4 @@
-# Environment variables - NUNCA versionar
+# Environment variables ....- NUNCA versionar
 .env
 .env.local
 .env.*.local
