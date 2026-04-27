@@ -8,7 +8,7 @@ import {
   SIMULATION_SUCCESS_MS,
 } from '../../utils/constants';
 
-export default function TenantPortalView({ tenant, payments, onPay, showAlert }) {
+export default function TenantPortalView({ tenant, payments, onPay, showAlert, loading }) {
   const [amount, setAmount] = useState(0);
   const [method, setMethod] = useState('Mercado Pago');
   const [yapeCode, setYapeCode] = useState('');
@@ -21,10 +21,28 @@ export default function TenantPortalView({ tenant, payments, onPay, showAlert })
     if (tenant) setAmount(tenant.balance);
   }, [tenant]);
 
-  if (!tenant) {
+  // Mientras Firestore carga los datos
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  // Carga terminada pero el arrendatario no tiene perfil en la colección "tenants"
+  // (el usuario existe en Firebase Auth pero el agente aún no lo ha registrado)
+  if (!tenant) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center px-4">
+        <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
+          <FileText className="w-8 h-8 text-amber-500" />
+        </div>
+        <h3 className="text-lg font-bold text-slate-800 mb-2">Perfil de arrendatario no encontrado</h3>
+        <p className="text-slate-500 text-sm max-w-sm">
+          Tu cuenta de usuario está activa, pero el agente inmobiliario aún no ha registrado
+          tu perfil de arrendatario en el sistema. Contacta a tu agente para que complete el registro.
+        </p>
       </div>
     );
   }

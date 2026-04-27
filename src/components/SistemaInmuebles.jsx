@@ -41,9 +41,9 @@ export default function SistemaInmuebles({ currentUser, setCurrentUser }) {
   const { alert, showAlert } = useAlert();
 
   const { properties, setProperties, fetchProperties } = useProperties();
-  const { tenants, setTenants, fetchTenants, addTenant, removeTenant } = useTenants();
+  const { tenants, setTenants, fetchTenants, addTenant, removeTenant, loading: tenantsLoading } = useTenants();
   const { contracts, fetchContracts, addContract, endContract } = useContracts();
-  const { payments, fetchPayments, addPayment } = usePayments();
+  const { payments, fetchPayments, addPayment, loading: paymentsLoading } = usePayments();
 
   // CRÍTICO FIX: se agregó await para evitar race condition en carga inicial
   useEffect(() => {
@@ -202,6 +202,7 @@ export default function SistemaInmuebles({ currentUser, setCurrentUser }) {
         <TenantPortalView
           tenant={currentTenant}
           payments={payments}
+          loading={tenantsLoading || paymentsLoading}
           onPay={async (data) => {
             const result = await addPayment(data);
             await Promise.all([fetchTenants(), fetchPayments()]);
