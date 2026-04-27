@@ -6,54 +6,62 @@ service cloud.firestore {
     function isAuth() {
       return request.auth != null;
     }
-    function role() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    function userDoc() {
+      let doc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return doc != null ? doc.data : null;
     }
-    function isAgent() { return isAuth() && role() == 'agent'; }
-    function isOwner() { return isAuth() && role() == 'owner'; }
+    function role() {
+      let docData = userDoc();
+      return docData != null ? docData.role : 'none';
+    }
+    function isAdmin()  { return isAuth() && role() == 'admin';  }
+    function isAgent()  { return isAuth() && role() == 'agent';  }
+    function isOwner()  { return isAuth() && role() == 'owner';  }
     function isTenant() { return isAuth() && role() == 'tenant'; }
 
     // ── Usuarios ─────────────────────────────────────────────
+    // Admin puede leer y gestionar todos los usuarios.
     match /users/{userId} {
-      allow read: if isAuth() && request.auth.uid == userId;
-      allow update: if isAuth() && request.auth.uid == userId;
-      allow create, delete: if false;
+      allow read:   if (isAuth() && request.auth.uid == userId) || isAdmin();
+      allow create: if (isAuth() && request.auth.uid == userId) || isAdmin();
+      allow update: if (isAuth() && request.auth.uid == userId) || isAdmin();
+      allow delete: if isAdmin();
     }
 
     // ── Propiedades ──────────────────────────────────────────
     match /properties/{id} {
-      allow read: if isAuth();
-      allow create, update, delete: if isAgent() || isOwner();
+      allow read:                    if isAuth();
+      allow create, update, delete:  if isAdmin() || isAgent() || isOwner();
     }
 
     // ── Arrendatarios ────────────────────────────────────────
     match /tenants/{id} {
-      allow read: if isAgent() || isOwner()
-                  || (isTenant() && resource.data.email == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email);
-      allow create, update: if isAgent();
-      allow delete: if isOwner();
+      allow read:   if isAdmin() || isAgent() || isOwner()
+                    || (isTenant() && resource.data.email == userDoc().email);
+      allow create, update: if isAdmin() || isAgent();
+      allow delete: if isAdmin() || isOwner();
     }
 
     // ── Contratos ────────────────────────────────────────────
     match /contracts/{id} {
-      allow read: if isAgent() || isOwner();
-      allow create, update: if isAgent();
-      allow delete: if isOwner();
+      allow read:          if isAdmin() || isAgent() || isOwner();
+      allow create, update: if isAdmin() || isAgent();
+      allow delete:        if isAdmin() || isOwner();
     }
 
     // ── Pagos ─────────────────────────────────────────────────
     match /payments/{id} {
-      allow read: if isAgent() || isOwner() || isTenant();
+      allow read:   if isAdmin() || isAgent() || isOwner() || isTenant();
       allow create: if isAuth();
-      allow update: if isAgent();
+      allow update: if isAdmin() || isAgent();
       allow delete: if false;
     }
 
     // ── Recibos ───────────────────────────────────────────────
     match /receipts/{id} {
-      allow read: if isAuth();
-      allow create, update: if isAgent();
-      allow delete: if false;
+      allow read:          if isAuth();
+      allow create, update: if isAdmin() || isAgent();
+      allow delete:        if false;
     }
   }
 }

@@ -16,6 +16,7 @@ import ContractsView from './Contracts/ContractsView';
 import AgentPaymentsView from './Payments/AgentPaymentsView';
 import TenantPortalView from './Payments/TenantPortalView';
 import ReportsView from './Reports/ReportsView';
+import AdminView from './Admin/AdminView';
 
 // Utilidad para alertas temporales
 function useAlert() {
@@ -29,9 +30,10 @@ function useAlert() {
 
 // ---------- Vista inicial según rol ----------
 const defaultView = {
-  [ROLES.AGENT]: 'dashboard',
+  [ROLES.ADMIN]:  'user_admin',
+  [ROLES.AGENT]:  'dashboard',
   [ROLES.TENANT]: 'tenant_portal',
-  [ROLES.OWNER]: 'reports',
+  [ROLES.OWNER]:  'reports',
 };
 
 export default function SistemaInmuebles({ currentUser, setCurrentUser }) {
@@ -45,9 +47,11 @@ export default function SistemaInmuebles({ currentUser, setCurrentUser }) {
   const { contracts, fetchContracts, addContract, endContract } = useContracts();
   const { payments, fetchPayments, addPayment } = usePayments();
 
-  // Cargar datos iniciales según rol (el propietario no necesita todos)
+  // Cargar datos iniciales según rol
   useEffect(() => {
-    if (role === ROLES.AGENT) {
+    if (role === ROLES.ADMIN) {
+      // Admin solo gestiona usuarios, no necesita datos del negocio
+    } else if (role === ROLES.AGENT) {
       Promise.all([fetchProperties(), fetchTenants(), fetchContracts(), fetchPayments()]);
     } else if (role === ROLES.TENANT) {
       fetchTenants();
@@ -137,6 +141,10 @@ export default function SistemaInmuebles({ currentUser, setCurrentUser }) {
 
   // ─── Render de vistas ─────────────────────────────────
   const renderView = () => {
+    if (role === ROLES.ADMIN) {
+      return <AdminView />;
+    }
+
     if (role === ROLES.AGENT) {
       if (currentView === 'dashboard') return <AgentDashboard />;
       if (currentView === 'tenants')

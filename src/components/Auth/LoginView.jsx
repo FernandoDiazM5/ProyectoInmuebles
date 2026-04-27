@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
-import { Home, Loader, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Home, Loader, AlertCircle, Eye, EyeOff, UserPlus } from 'lucide-react';
 import { loginUser } from '../../services/authService';
 
-export default function LoginView() {
+export default function LoginView({ onRegister, authError }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (authError) setError(authError);
+  }, [authError]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,7 +23,6 @@ export default function LoginView() {
     setLoading(true);
     try {
       await loginUser(email.trim(), password);
-      // onAuthStateChanged en App.jsx detecta el cambio automáticamente
     } catch (err) {
       setError(err.message);
       setPassword('');
@@ -43,7 +46,7 @@ export default function LoginView() {
 
         {/* Error */}
         {error && (
-          <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm animate-fade-in">
+          <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{error}</span>
           </div>
@@ -107,14 +110,24 @@ export default function LoginView() {
           </button>
         </form>
 
-        <p className="text-center text-xs text-slate-400 mt-6">
-          ¿Sin acceso? Contacte al administrador del sistema
-        </p>
+        {/* Registro de arrendatario */}
+        <div className="mt-5 pt-5 border-t border-slate-100 text-center">
+          <p className="text-sm text-slate-500 mb-2">¿Eres arrendatario y no tienes cuenta?</p>
+          <button
+            onClick={onRegister}
+            className="flex items-center gap-2 text-sm text-emerald-600 hover:text-emerald-700
+                       font-medium mx-auto transition"
+          >
+            <UserPlus className="w-4 h-4" />
+            Registrarme como Arrendatario
+          </button>
+        </div>
 
         {/* Credenciales de prueba — solo en development */}
         {import.meta.env.VITE_APP_ENV === 'development' && (
-          <div className="mt-6 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 space-y-1">
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 space-y-1">
             <p className="font-semibold">Credenciales de prueba:</p>
+            <p>Admin: admin@sistema.com / Admin123</p>
             <p>Agente: agente@test.com / Test123456</p>
             <p>Inquilino: inquilino@test.com / Test123456</p>
             <p>Propietario: propietario@test.com / Test123456</p>

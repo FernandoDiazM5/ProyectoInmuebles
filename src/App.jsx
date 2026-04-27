@@ -3,15 +3,18 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { Loader } from 'lucide-react';
 import { auth, db } from './services/firebase';
+import { logoutUser } from './services/authService';
 import LoginView from './components/Auth/LoginView';
 import SetupView from './components/Auth/SetupView';
+import RegisterTenantView from './components/Auth/RegisterTenantView';
 import SistemaInmuebles from './components/SistemaInmuebles';
 
-// Estado de autenticación:
-//   'loading'          → esperando respuesta de Firebase
-//   'unauthenticated'  → sin sesión → mostrar Login
-//   'needs_setup'      → autenticado pero sin perfil en Firestore → mostrar Setup
-//   'authenticated'    → autenticado con perfil completo → mostrar Sistema
+// Estados:
+//   'loading'       → esperando Firebase
+//   'unauthenticated' → sin sesión → Login
+//   'registering'   → usuario quiere crear cuenta de arrendatario
+//   'needs_setup'   → autenticado pero sin perfil Firestore → Setup
+//   'authenticated' → autenticado con perfil completo → Sistema
 
 function LoadingScreen() {
   return (
@@ -25,29 +28,37 @@ function LoadingScreen() {
 }
 
 export default function App() {
-  const [authState, setAuthState]       = useState('loading');   // ver estados arriba
-  const [firebaseUser, setFirebaseUser] = useState(null);        // objeto de Firebase Auth
-  const [currentUser, setCurrentUser]   = useState(null);        // perfil completo + rol
+  const [authState, setAuthState]       = useState('loading');
+  const [firebaseUser, setFirebaseUser] = useState(null);
+  const [currentUser, setCurrentUser]   = useState(null);
+  const [authError, setAuthError]       = useState('');
 
-  // Cargar (o recargar) el perfil desde Firestore
   const loadProfile = async (fbUser) => {
     if (!fbUser) { setAuthState('unauthenticated'); return; }
 
     const snap = await getDoc(doc(db, 'users', fbUser.uid));
 
     if (!snap.exists()) {
-      // Autenticado pero sin perfil → SetupView
       setFirebaseUser(fbUser);
       setAuthState('needs_setup');
       return;
     }
 
     const data = snap.data();
+
+    // Cuenta desactivada por el administrador
+    if (data.isActive === false) {
+      setAuthError('Tu cuenta ha sido desactivada. Contacta al administrador.');
+      await logoutUser();
+      return;
+    }
+
+    setAuthError('');
     setCurrentUser({
       id:    fbUser.uid,
       email: fbUser.email,
       name:  data.name,
-      role:  data.role,          // 'agent' | 'tenant' | 'owner'
+      role:  data.role,
       phone: data.phone || '',
       ...data,
     });
@@ -55,7 +66,6 @@ export default function App() {
   };
 
   useEffect(() => {
-    // Se dispara al iniciar, en login, logout y al recargar la página
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       try {
         await loadProfile(fbUser);
@@ -67,15 +77,25 @@ export default function App() {
     return unsubscribe;
   }, []);
 
-  // Handler que llama SetupView cuando el perfil se acaba de crear
   const handleProfileCreated = async () => {
     await loadProfile(firebaseUser);
   };
 
   // ── Render según estado ──────────────────────────────────────
-  if (authState === 'loading')         return <LoadingScreen />;
-  if (authState === 'unauthenticated') return <LoginView />;
-  if (authState === 'needs_setup')     return (
+  if (authState === 'loading') return <LoadingScreen />;
+
+  if (authState === 'unauthenticated') return (
+    <LoginView
+      onRegister={() => { setAuthError(''); setAuthState('registering'); }}
+      authError={authError}
+    />
+  );
+
+  if (authState === 'registering') return (
+    <RegisterTenantView onBack={() => setAuthState('unauthenticated')} />
+  );
+
+  if (authState === 'needs_setup') return (
     <SetupView
       firebaseUser={firebaseUser}
       onProfileCreated={handleProfileCreated}
