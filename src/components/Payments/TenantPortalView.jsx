@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, CheckCircle, FileText, Loader, XCircle, Lock } from 'lucide-react';
 import { generateReceiptPDF } from '../../services/pdfService';
+import { formatCurrency } from '../../utils/formatters';
+import {
+  SIMULATION_REDIRECT_MS,
+  SIMULATION_PROCESS_MS,
+  SIMULATION_SUCCESS_MS,
+} from '../../utils/constants';
 
 export default function TenantPortalView({ tenant, payments, onPay, showAlert }) {
   const [amount, setAmount] = useState(0);
@@ -8,7 +14,6 @@ export default function TenantPortalView({ tenant, payments, onPay, showAlert })
   const [yapeCode, setYapeCode] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // Simulación pasarela Mercado Pago
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationStep, setSimulationStep] = useState('redirecting');
 
@@ -47,7 +52,7 @@ export default function TenantPortalView({ tenant, payments, onPay, showAlert })
         date: new Date().toISOString().slice(0, 10),
       });
 
-      showAlert(`Pago procesado. Recibo ${receiptNumber} generado (CUS05). Saldo: $${newBalance}`);
+      showAlert(`Pago procesado. Recibo ${receiptNumber} generado (CUS05). Saldo: ${formatCurrency(newBalance)}`);
       setAmount(0);
       setYapeCode('');
       setIsSimulating(false);
@@ -62,26 +67,25 @@ export default function TenantPortalView({ tenant, payments, onPay, showAlert })
   const handleInitiatePayment = (e) => {
     e.preventDefault();
     if (Number(amount) <= 0 || Number(amount) > tenant.balance) {
-      showAlert('Monto inválido', 'error'); return;
+      showAlert('Monto inválido: debe ser mayor a 0 y no superar el saldo pendiente', 'error'); return;
     }
-    if (method === 'Yape' && !yapeCode) {
+    if (method === 'Yape' && !yapeCode.trim()) {
       showAlert('Ingrese el código de aprobación de Yape', 'error'); return;
     }
     if (method === 'Transferencia Bancaria' || method === 'Yape') {
       finalizePayment(); return;
     }
-    // Mercado Pago / Tarjeta — simulación pasarela
     setIsSimulating(true);
     setSimulationStep('redirecting');
-    setTimeout(() => setSimulationStep('checkout'), 1500);
+    setTimeout(() => setSimulationStep('checkout'), SIMULATION_REDIRECT_MS);
   };
 
   const handleProcessPayment = () => {
     setSimulationStep('processing');
     setTimeout(() => {
       setSimulationStep('success');
-      setTimeout(finalizePayment, 1500);
-    }, 2000);
+      setTimeout(finalizePayment, SIMULATION_SUCCESS_MS);
+    }, SIMULATION_PROCESS_MS);
   };
 
   return (
@@ -93,7 +97,7 @@ export default function TenantPortalView({ tenant, payments, onPay, showAlert })
         <div className="bg-white p-6 rounded-xl shadow-sm flex flex-col justify-center items-center border-t-4 border-slate-800">
           <p className="text-slate-500 font-medium">Saldo Pendiente Actual</p>
           <h3 className={`text-5xl font-bold mt-2 ${tenant.balance > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-            ${tenant.balance}
+            {formatCurrency(tenant.balance)}
           </h3>
           <span className={`inline-block mt-4 px-4 py-2 rounded-full text-sm font-bold
             ${tenant.balance > 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
@@ -111,8 +115,15 @@ export default function TenantPortalView({ tenant, payments, onPay, showAlert })
             <form onSubmit={handleInitiatePayment}>
               <div className="mb-4">
                 <label className="block text-sm text-slate-600 mb-1">Monto a pagar ($)</label>
-                <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
-                  className="w-full border rounded-lg p-2 font-bold text-lg text-slate-700 focus:ring-2 focus:ring-blue-400 outline-none" />
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  max={tenant.balance}
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="w-full border rounded-lg p-2 font-bold text-lg text-slate-700 focus:ring-2 focus:ring-blue-400 outline-none"
+                />
               </div>
               <div className="mb-4">
                 <label className="block text-sm text-slate-600 mb-1">Método de Pago</label>
@@ -182,7 +193,7 @@ export default function TenantPortalView({ tenant, payments, onPay, showAlert })
                 <div className="animate-fade-in">
                   <div className="mb-6 pb-4 border-b">
                     <p className="text-sm text-slate-500">Total a pagar a <span className="font-bold text-slate-800">Inmuebles Pro</span></p>
-                    <h2 className="text-3xl font-bold text-slate-800">${amount}</h2>
+                    <h2 className="text-3xl font-bold text-slate-800">{formatCurrency(amount)}</h2>
                   </div>
                   <div className="space-y-4 mb-6">
                     <div>
@@ -205,7 +216,7 @@ export default function TenantPortalView({ tenant, payments, onPay, showAlert })
                   </div>
                   <button onClick={handleProcessPayment}
                     className="w-full bg-[#009ee3] hover:bg-[#008cc9] text-white font-bold py-3 rounded-lg transition">
-                    Pagar ${amount}
+                    Pagar {formatCurrency(amount)}
                   </button>
                 </div>
               )}
@@ -254,7 +265,7 @@ export default function TenantPortalView({ tenant, payments, onPay, showAlert })
               <tr key={p.id} className="border-b hover:bg-slate-50 transition">
                 <td className="p-4 font-mono text-xs font-bold text-blue-600">{p.receiptNumber}</td>
                 <td className="p-4 text-sm">{p.date}</td>
-                <td className="p-4 font-bold text-emerald-600 text-sm">${p.amount}</td>
+                <td className="p-4 font-bold text-emerald-600 text-sm">{formatCurrency(p.amount)}</td>
                 <td className="p-4 text-slate-500 text-sm">{p.method}</td>
                 <td className="p-4">
                   <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 w-max">

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { Loader } from 'lucide-react';
+import { Loader, AlertCircle } from 'lucide-react';
 import { auth, db } from './services/firebase';
 import { logoutUser } from './services/authService';
 import LoginView from './components/Auth/LoginView';
@@ -10,11 +10,11 @@ import RegisterTenantView from './components/Auth/RegisterTenantView';
 import SistemaInmuebles from './components/SistemaInmuebles';
 
 // Estados:
-//   'loading'       → esperando Firebase
+//   'loading'         → esperando Firebase
 //   'unauthenticated' → sin sesión → Login
-//   'registering'   → usuario quiere crear cuenta de arrendatario
-//   'needs_setup'   → autenticado pero sin perfil Firestore → Setup
-//   'authenticated' → autenticado con perfil completo → Sistema
+//   'registering'     → usuario quiere crear cuenta de arrendatario
+//   'needs_setup'     → autenticado pero sin perfil Firestore → Setup
+//   'authenticated'   → autenticado con perfil completo → Sistema
 
 function LoadingScreen() {
   return (
@@ -22,6 +22,26 @@ function LoadingScreen() {
       <div className="text-center">
         <Loader className="w-10 h-10 animate-spin text-blue-600 mx-auto mb-3" />
         <p className="text-slate-500 text-sm">Cargando sistema…</p>
+      </div>
+    </div>
+  );
+}
+
+function AuthErrorScreen({ message, onDismiss }) {
+  return (
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 text-center">
+        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <AlertCircle className="w-8 h-8 text-red-600" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-800 mb-2">Acceso restringido</h2>
+        <p className="text-slate-600 text-sm mb-6">{message}</p>
+        <button
+          onClick={onDismiss}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2.5 rounded-lg transition"
+        >
+          Volver al inicio de sesión
+        </button>
       </div>
     </div>
   );
@@ -50,6 +70,7 @@ export default function App() {
     if (data.isActive === false) {
       setAuthError('Tu cuenta ha sido desactivada. Contacta al administrador.');
       await logoutUser();
+      setAuthState('auth_error');
       return;
     }
 
@@ -71,7 +92,8 @@ export default function App() {
         await loadProfile(fbUser);
       } catch (err) {
         console.error('Auth error:', err);
-        setAuthState('unauthenticated');
+        setAuthError('Ocurrió un error al verificar tu sesión. Intenta ingresar nuevamente.');
+        setAuthState('auth_error');
       }
     });
     return unsubscribe;
@@ -81,8 +103,13 @@ export default function App() {
     await loadProfile(firebaseUser);
   };
 
-  // ── Render según estado ──────────────────────────────────────
-  if (authState === 'loading') return <LoadingScreen />;
+  const dismissError = async () => {
+    setAuthError('');
+    setAuthState('unauthenticated');
+  };
+
+  if (authState === 'loading')       return <LoadingScreen />;
+  if (authState === 'auth_error')    return <AuthErrorScreen message={authError} onDismiss={dismissError} />;
 
   if (authState === 'unauthenticated') return (
     <LoginView
@@ -102,7 +129,6 @@ export default function App() {
     />
   );
 
-  // authState === 'authenticated'
   return (
     <SistemaInmuebles
       currentUser={currentUser}

@@ -7,8 +7,8 @@ service cloud.firestore {
       return request.auth != null;
     }
     function userDoc() {
-      let doc = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      return doc != null ? doc.data : null;
+      let d = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return d != null ? d.data : null;
     }
     function role() {
       let docData = userDoc();
@@ -20,7 +20,6 @@ service cloud.firestore {
     function isTenant() { return isAuth() && role() == 'tenant'; }
 
     // ── Usuarios ─────────────────────────────────────────────
-    // Admin puede leer y gestionar todos los usuarios.
     match /users/{userId} {
       allow read:   if (isAuth() && request.auth.uid == userId) || isAdmin();
       allow create: if (isAuth() && request.auth.uid == userId) || isAdmin();
@@ -36,32 +35,28 @@ service cloud.firestore {
 
     // ── Arrendatarios ────────────────────────────────────────
     match /tenants/{id} {
-      allow read:   if isAdmin() || isAgent() || isOwner()
-                    || (isTenant() && resource.data.email == userDoc().email);
+      allow read:           if isAdmin() || isAgent() || isOwner()
+                            || (isTenant() && resource.data.email == userDoc().email);
       allow create, update: if isAdmin() || isAgent();
-      allow delete: if isAdmin() || isOwner();
+      allow delete:         if isAdmin() || isAgent() || isOwner();
     }
 
     // ── Contratos ────────────────────────────────────────────
     match /contracts/{id} {
-      allow read:          if isAdmin() || isAgent() || isOwner();
+      allow read:           if isAdmin() || isAgent() || isOwner();
       allow create, update: if isAdmin() || isAgent();
-      allow delete:        if isAdmin() || isOwner();
+      allow delete:         if isAdmin() || isAgent() || isOwner();
     }
 
     // ── Pagos ─────────────────────────────────────────────────
+    // La eliminación solo está permitida como parte de operaciones en cascada
+    // realizadas por admin o agente; el sistema nunca expone un botón de
+    // "eliminar pago" individual en la UI.
     match /payments/{id} {
-      allow read:   if isAdmin() || isAgent() || isOwner() || isTenant();
-      allow create: if isAuth();
-      allow update: if isAdmin() || isAgent();
-      allow delete: if false;
-    }
-
-    // ── Recibos ───────────────────────────────────────────────
-    match /receipts/{id} {
-      allow read:          if isAuth();
-      allow create, update: if isAdmin() || isAgent();
-      allow delete:        if false;
+      allow read:          if isAdmin() || isAgent() || isOwner() || isTenant();
+      allow create:        if isAuth();
+      allow update:        if isAdmin() || isAgent();
+      allow delete:        if isAdmin() || isAgent();
     }
   }
 }

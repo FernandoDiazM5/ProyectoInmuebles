@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { getProperties, createProperty, updateProperty, deleteProperty } from '../services/propertyService';
+import { getProperties, createProperty, updateProperty } from '../services/propertyService';
+import { deletePropertyCascade } from '../services/cascadeService';
 
 export const useProperties = () => {
   const [properties, setProperties] = useState([]);
@@ -30,8 +31,9 @@ export const useProperties = () => {
     await fetchProperties();
   };
 
+  // Eliminación en cascada: contratos → pagos → propiedad
   const removeProperty = async (id) => {
-    await deleteProperty(id);
+    await deletePropertyCascade(id);
     setProperties((prev) => prev.filter((p) => p.id !== id));
   };
 

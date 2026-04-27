@@ -1,5 +1,5 @@
 import {
-  collection, addDoc, getDocs, doc, updateDoc,
+  collection, addDoc, getDocs, doc, updateDoc, getDoc,
   query, where, serverTimestamp,
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -15,6 +15,18 @@ export const getContracts = async () => {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
 
+export const getContractsByTenant = async (tenantId) => {
+  const q = query(collection(db, COL), where('tenantId', '==', tenantId));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+};
+
+export const getContractsByProperty = async (propertyId) => {
+  const q = query(collection(db, COL), where('propertyId', '==', propertyId));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+};
+
 export const getActiveContractByTenant = async (tenantId) => {
   const q = query(
     collection(db, COL),
@@ -25,8 +37,20 @@ export const getActiveContractByTenant = async (tenantId) => {
   return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
 };
 
-// CUS02 - Crear contrato: vincula propiedad + arrendatario
+// CUS02 - Crear contrato: valida entidades y vincula propiedad + arrendatario
 export const createContract = async ({ tenantId, propertyId, amount, duration }) => {
+  // Integridad referencial: ambas entidades deben existir
+  const [tenantSnap, propertySnap] = await Promise.all([
+    getDoc(doc(db, 'tenants', tenantId)),
+    getDoc(doc(db, 'properties', propertyId)),
+  ]);
+  if (!tenantSnap.exists()) throw new Error('El arrendatario seleccionado no existe en la base de datos');
+  if (!propertySnap.exists()) throw new Error('La propiedad seleccionada no existe en la base de datos');
+
+  // Evita contrato duplicado activo para el mismo arrendatario
+  const existing = await getActiveContractByTenant(tenantId);
+  if (existing) throw new Error('El arrendatario ya tiene un contrato activo (N° ' + existing.contractNumber + ')');
+
   const contractNumber = generateContractId();
   const startDate = todayISO();
 
@@ -42,14 +66,13 @@ export const createContract = async ({ tenantId, propertyId, amount, duration })
     updatedAt: serverTimestamp(),
   });
 
-  // Efecto colateral: marcar propiedad y arrendatario
   await setPropertyRented(propertyId, tenantId);
   await linkToProperty(tenantId, propertyId, Number(amount));
 
   return { id: ref.id, contractNumber };
 };
 
-// CUS03 - Terminar contrato
+// CUS03 - Terminar contrato (cambia estado, libera propiedad y arrendatario)
 export const terminateContract = async (contractId, propertyId, tenantId) => {
   await updateDoc(doc(db, COL, contractId), {
     status: CONTRACT_STATUS.TERMINATED,

@@ -1,6 +1,6 @@
 import {
-  collection, addDoc, getDocs, query,
-  where, serverTimestamp,
+  collection, addDoc, getDocs, deleteDoc, doc,
+  query, where, serverTimestamp,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { PAYMENT_STATUS } from '../utils/constants';
@@ -23,7 +23,19 @@ export const getPaymentsByTenant = async (tenantId) => {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 };
 
-// Construye la referencia según el método de pago
+// Helper de cascada: elimina todos los pagos de un arrendatario
+export const deletePaymentsByTenant = async (tenantId) => {
+  const payments = await getPaymentsByTenant(tenantId);
+  await Promise.all(payments.map((p) => deleteDoc(doc(db, COL, p.id))));
+};
+
+// Helper de cascada: elimina todos los pagos de un contrato específico
+export const deletePaymentsByContract = async (contractId) => {
+  const q = query(collection(db, COL), where('contractId', '==', contractId));
+  const snap = await getDocs(q);
+  await Promise.all(snap.docs.map((d) => deleteDoc(doc(db, COL, d.id))));
+};
+
 const buildReference = (method, yapeCode = '') => {
   if (method === 'Mercado Pago') return generateMpReference();
   if (method === 'Yape') return generateYapeReference(yapeCode);

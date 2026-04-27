@@ -1,6 +1,6 @@
 import {
   collection, addDoc, getDocs, doc, updateDoc,
-  deleteDoc, getDoc, serverTimestamp,
+  deleteDoc, getDoc, serverTimestamp, query, where,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { TENANT_STATUS } from '../utils/constants';
@@ -18,6 +18,12 @@ export const getTenantById = async (id) => {
 };
 
 export const createTenant = async (data) => {
+  // Unicidad de email: evita duplicados silenciosos
+  const existing = await getDocs(
+    query(collection(db, COL), where('email', '==', data.email.trim().toLowerCase()))
+  );
+  if (!existing.empty) throw new Error('Ya existe un arrendatario registrado con ese correo electrónico');
+
   const ref = await addDoc(collection(db, COL), {
     name: data.name.trim(),
     dni: data.dni.trim(),
@@ -39,14 +45,17 @@ export const updateTenant = async (id, data) => {
 
 // Actualiza saldo y estado del arrendatario después de un pago
 export const applyPayment = async (id, amountPaid, currentBalance) => {
-  const newBalance = currentBalance - amountPaid;
+  const newBalance = Math.max(0, currentBalance - amountPaid);
+  // Obtiene totalPaid actual en una sola lectura
+  const tenant = await getTenantById(id);
+  if (!tenant) throw new Error('Arrendatario no encontrado al aplicar pago');
   await updateDoc(doc(db, COL, id), {
-    balance: newBalance < 0 ? 0 : newBalance,
-    totalPaid: (await getTenantById(id)).totalPaid + amountPaid,
+    balance: newBalance,
+    totalPaid: (tenant.totalPaid || 0) + amountPaid,
     status: newBalance <= 0 ? TENANT_STATUS.UP_TO_DATE : TENANT_STATUS.DELINQUENT,
     updatedAt: serverTimestamp(),
   });
-  return newBalance < 0 ? 0 : newBalance;
+  return newBalance;
 };
 
 // Vincula al arrendatario con una propiedad y le carga el primer mes
@@ -68,6 +77,7 @@ export const unlinkFromProperty = async (id) => {
   });
 };
 
+// Eliminación simple del documento (la cascada la maneja cascadeService.js)
 export const deleteTenant = async (id) => {
   await deleteDoc(doc(db, COL, id));
 };

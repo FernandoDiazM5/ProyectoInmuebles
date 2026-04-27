@@ -45,3 +45,10 @@ export const CONTRACT_DURATIONS = [
 ];
 
 export const COLLECTION_GOAL_PERCENT = 92;
+
+// Timeouts de UI (en milisegundos)
+export const ALERT_TIMEOUT_MS = 4500;
+export const SIMULATION_REDIRECT_MS = 1500;
+export const SIMULATION_PROCESS_MS = 2000;
+export const SIMULATION_SUCCESS_MS = 1500;
+export const FORM_SUCCESS_CLOSE_MS = 2500;

@@ -3,17 +3,18 @@ import { CreditCard, CheckCircle } from 'lucide-react';
 import { PAYMENT_METHODS } from '../../utils/constants';
 import { validatePaymentForm } from '../../utils/validators';
 import { generateReceiptPDF } from '../../services/pdfService';
+import { formatCurrency } from '../../utils/formatters';
 
 export default function AgentPaymentsView({ tenants, payments, onPay, showAlert }) {
   const tenantsWithDebt = tenants.filter((t) => t.balance > 0);
-  const [form, setForm] = useState({ tenantId: '', amount: '', method: PAYMENT_METHODS[0], ref: '' });
+  const [form, setForm] = useState({ tenantId: '', amount: '', method: PAYMENT_METHODS[0] });
   const [saving, setSaving] = useState(false);
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
   const handleSelectTenant = (e) => {
     const t = tenants.find((x) => x.id === e.target.value);
-    setForm((f) => ({ ...f, tenantId: e.target.value, amount: t ? t.balance : '' }));
+    setForm((f) => ({ ...f, tenantId: e.target.value, amount: t ? String(t.balance) : '' }));
   };
 
   const handlePay = async (e) => {
@@ -31,18 +32,17 @@ export default function AgentPaymentsView({ tenants, payments, onPay, showAlert 
         processedBy: 'agent',
       });
 
-      // CUS05 - Generar PDF del recibo
       generateReceiptPDF({
         receiptNumber,
         tenant,
         amount: Number(form.amount),
         method: form.method,
-        reference: form.ref || receiptNumber,
+        reference: receiptNumber,
         date: new Date().toISOString().slice(0, 10),
       });
 
-      showAlert(`CUS04 Exitoso. CUS05: Recibo ${receiptNumber} generado. Nuevo saldo: $${newBalance}`);
-      setForm({ tenantId: '', amount: '', method: PAYMENT_METHODS[0], ref: '' });
+      showAlert(`CUS04 Exitoso. CUS05: Recibo ${receiptNumber} generado. Nuevo saldo: ${formatCurrency(newBalance)}`);
+      setForm({ tenantId: '', amount: '', method: PAYMENT_METHODS[0] });
     } catch (ex) {
       showAlert(ex.message, 'error');
     } finally {
@@ -66,13 +66,13 @@ export default function AgentPaymentsView({ tenants, payments, onPay, showAlert 
               className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-400 outline-none">
               <option value="">Seleccione Inquilino con deuda</option>
               {tenantsWithDebt.map((t) => (
-                <option key={t.id} value={t.id}>{t.name} — Deuda: ${t.balance}</option>
+                <option key={t.id} value={t.id}>{t.name} — Deuda: {formatCurrency(t.balance)}</option>
               ))}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Monto ($) *</label>
-            <input type="number" value={form.amount} onChange={set('amount')}
+            <input type="number" min="0.01" step="0.01" value={form.amount} onChange={set('amount')}
               className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-emerald-400 outline-none" />
           </div>
           <div>
@@ -112,7 +112,7 @@ export default function AgentPaymentsView({ tenants, payments, onPay, showAlert 
                   <td className="p-4 font-mono text-xs text-blue-600 font-bold">{p.receiptNumber}</td>
                   <td className="p-4 text-sm">{p.date}</td>
                   <td className="p-4 text-sm">{t?.name ?? 'N/A'}</td>
-                  <td className="p-4 font-medium text-emerald-600 text-sm">${p.amount}</td>
+                  <td className="p-4 font-medium text-emerald-600 text-sm">{formatCurrency(p.amount)}</td>
                   <td className="p-4 text-slate-500 text-sm">{p.method}</td>
                 </tr>
               );

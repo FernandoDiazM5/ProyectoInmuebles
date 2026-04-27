@@ -3,11 +3,14 @@ import { Plus, XCircle, FileDown } from 'lucide-react';
 import { validateContractForm } from '../../utils/validators';
 import { CONTRACT_STATUS, CONTRACT_DURATIONS } from '../../utils/constants';
 import { generateContractPDF } from '../../services/pdfService';
+import { formatCurrency } from '../../utils/formatters';
+import ConfirmDialog from '../Layout/ConfirmDialog';
 
 export default function ContractsView({ contracts, tenants, properties, onAdd, onTerminate, showAlert }) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ tenantId: '', propertyId: '', amount: '', duration: 12 });
   const [saving, setSaving] = useState(false);
+  const [confirm, setConfirm] = useState(null); // { contract } | null
 
   const availableProperties = properties.filter((p) => p.status === 'DISPONIBLE');
   const tenantsWithoutContract = tenants.filter(
@@ -29,7 +32,6 @@ export default function ContractsView({ contracts, tenants, properties, onAdd, o
     try {
       const { contractNumber } = await onAdd(form);
 
-      // CUS02 - Generar PDF del contrato
       const tenant = tenants.find((t) => t.id === form.tenantId);
       const property = properties.find((p) => p.id === form.propertyId);
       generateContractPDF({
@@ -48,13 +50,18 @@ export default function ContractsView({ contracts, tenants, properties, onAdd, o
     }
   };
 
-  const handleTerminate = async (contract) => {
+  const requestTerminate = (contract) => {
     const tenant = tenants.find((t) => t.id === contract.tenantId);
     if (tenant?.balance > 0) {
       showAlert('CUS03 Error: El arrendatario tiene saldo pendiente. Debe pagarlo primero.', 'error');
       return;
     }
-    if (!window.confirm(`¿Desea finalizar el contrato ${contract.contractNumber}?`)) return;
+    setConfirm({ contract });
+  };
+
+  const handleConfirmTerminate = async () => {
+    const { contract } = confirm;
+    setConfirm(null);
     try {
       await onTerminate(contract.id, contract.propertyId, contract.tenantId);
       showAlert('CUS03 Exitoso: Contrato terminado y propiedad liberada.');
@@ -65,6 +72,14 @@ export default function ContractsView({ contracts, tenants, properties, onAdd, o
 
   return (
     <div>
+      <ConfirmDialog
+        open={!!confirm}
+        title="Terminar Contrato"
+        message={`¿Desea finalizar el contrato ${confirm?.contract?.contractNumber}? Esta acción liberará la propiedad y marcará al arrendatario como inactivo.`}
+        onConfirm={handleConfirmTerminate}
+        onCancel={() => setConfirm(null)}
+      />
+
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-slate-800">Gestión de Contratos</h2>
         <button onClick={() => setShowForm((v) => !v)}
@@ -74,7 +89,6 @@ export default function ContractsView({ contracts, tenants, properties, onAdd, o
         </button>
       </div>
 
-      {/* CUS02 - Formulario */}
       {showForm && (
         <div className="bg-white p-6 rounded-xl shadow-sm mb-6 border-l-4 border-purple-500 animate-fade-in">
           <h3 className="text-lg font-bold mb-4">CUS02: Generar Nuevo Contrato Automático</h3>
@@ -95,13 +109,13 @@ export default function ContractsView({ contracts, tenants, properties, onAdd, o
                 className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-purple-400 outline-none">
                 <option value="">Seleccione Inmueble</option>
                 {availableProperties.map((p) => (
-                  <option key={p.id} value={p.id}>{p.address} — ${p.price}</option>
+                  <option key={p.id} value={p.id}>{p.address} — {formatCurrency(p.price)}</option>
                 ))}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Monto Mensual ($) *</label>
-              <input type="number" value={form.amount} onChange={set('amount')}
+              <input type="number" min="1" step="0.01" value={form.amount} onChange={set('amount')}
                 className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-purple-400 outline-none" />
             </div>
             <div>
@@ -124,7 +138,6 @@ export default function ContractsView({ contracts, tenants, properties, onAdd, o
         </div>
       )}
 
-      {/* Tabla */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-100">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -147,7 +160,7 @@ export default function ContractsView({ contracts, tenants, properties, onAdd, o
                 <tr key={c.id} className="border-b hover:bg-slate-50 transition">
                   <td className="p-4 font-mono text-xs text-blue-600 font-bold">{c.contractNumber}</td>
                   <td className="p-4 font-medium text-sm">{t?.name ?? 'Desconocido'}</td>
-                  <td className="p-4 text-sm">${c.monthlyAmount}</td>
+                  <td className="p-4 text-sm">{formatCurrency(c.monthlyAmount)}</td>
                   <td className="p-4 text-sm text-slate-600">{c.duration} meses</td>
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-bold
@@ -157,7 +170,7 @@ export default function ContractsView({ contracts, tenants, properties, onAdd, o
                   </td>
                   <td className="p-4">
                     {c.status === CONTRACT_STATUS.ACTIVE && (
-                      <button onClick={() => handleTerminate(c)}
+                      <button onClick={() => requestTerminate(c)}
                         className="text-red-600 hover:text-red-800 text-xs font-medium">
                         CUS03: Terminar
                       </button>

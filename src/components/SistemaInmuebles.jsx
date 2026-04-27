@@ -6,7 +6,8 @@ import { useProperties } from '../hooks/useProperties';
 import { useTenants } from '../hooks/useTenants';
 import { useContracts } from '../hooks/useContracts';
 import { usePayments } from '../hooks/usePayments';
-import { ROLES, CONTRACT_STATUS } from '../utils/constants';
+import { ROLES, CONTRACT_STATUS, ALERT_TIMEOUT_MS } from '../utils/constants';
+import { formatCurrency } from '../utils/formatters';
 
 import Sidebar from './Layout/Sidebar';
 import Alert from './Layout/Alert';
@@ -18,17 +19,15 @@ import TenantPortalView from './Payments/TenantPortalView';
 import ReportsView from './Reports/ReportsView';
 import AdminView from './Admin/AdminView';
 
-// Utilidad para alertas temporales
 function useAlert() {
   const [alert, setAlert] = useState(null);
   const showAlert = useCallback((msg, type = 'success') => {
     setAlert({ msg, type });
-    setTimeout(() => setAlert(null), 4500);
+    setTimeout(() => setAlert(null), ALERT_TIMEOUT_MS);
   }, []);
   return { alert, showAlert };
 }
 
-// ---------- Vista inicial según rol ----------
 const defaultView = {
   [ROLES.ADMIN]:  'user_admin',
   [ROLES.AGENT]:  'dashboard',
@@ -41,39 +40,36 @@ export default function SistemaInmuebles({ currentUser, setCurrentUser }) {
   const [currentView, setCurrentView] = useState(defaultView[role] ?? 'dashboard');
   const { alert, showAlert } = useAlert();
 
-  // ─── Datos desde Firestore ───────────────────────────
   const { properties, setProperties, fetchProperties } = useProperties();
-  const { tenants, setTenants, fetchTenants, addTenant } = useTenants();
+  const { tenants, setTenants, fetchTenants, addTenant, removeTenant } = useTenants();
   const { contracts, fetchContracts, addContract, endContract } = useContracts();
   const { payments, fetchPayments, addPayment } = usePayments();
 
-  // Cargar datos iniciales según rol
+  // CRÍTICO FIX: se agregó await para evitar race condition en carga inicial
   useEffect(() => {
-    if (role === ROLES.ADMIN) {
-      // Admin solo gestiona usuarios, no necesita datos del negocio
-    } else if (role === ROLES.AGENT) {
-      Promise.all([fetchProperties(), fetchTenants(), fetchContracts(), fetchPayments()]);
-    } else if (role === ROLES.TENANT) {
-      fetchTenants();
-      fetchPayments();
-    } else if (role === ROLES.OWNER) {
-      fetchTenants();
-      fetchContracts();
-    }
+    const load = async () => {
+      if (role === ROLES.ADMIN) {
+        // Admin solo gestiona usuarios, no necesita datos del negocio
+      } else if (role === ROLES.AGENT) {
+        await Promise.all([fetchProperties(), fetchTenants(), fetchContracts(), fetchPayments()]);
+      } else if (role === ROLES.TENANT) {
+        await Promise.all([fetchTenants(), fetchPayments()]);
+      } else if (role === ROLES.OWNER) {
+        await Promise.all([fetchTenants(), fetchContracts()]);
+      }
+    };
+    load();
   }, [role]);
 
-  // ─── Logout ──────────────────────────────────────────
   const handleLogout = async () => {
     await logoutUser();
     setCurrentUser(null);
   };
 
-  // ─── Arrendatario actual (portal) ────────────────────
   const currentTenant = role === ROLES.TENANT
     ? tenants.find((t) => t.email === currentUser.email)
     : null;
 
-  // ─── Dashboard del Agente ─────────────────────────────
   const AgentDashboard = () => (
     <div>
       <h2 className="text-2xl font-bold text-slate-800 mb-6">Panel Principal — Agente</h2>
@@ -104,7 +100,6 @@ export default function SistemaInmuebles({ currentUser, setCurrentUser }) {
         />
       </div>
 
-      {/* Resumen rápido de morosos */}
       {tenants.filter((t) => t.balance > 0).length > 0 && (
         <div className="mt-8 bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
           <div className="p-4 border-b bg-red-50">
@@ -124,7 +119,7 @@ export default function SistemaInmuebles({ currentUser, setCurrentUser }) {
               {tenants.filter((t) => t.balance > 0).map((t) => (
                 <tr key={t.id} className="border-b hover:bg-slate-50">
                   <td className="p-4 font-medium text-sm">{t.name}</td>
-                  <td className="p-4 font-bold text-red-600 text-sm">${t.balance}</td>
+                  <td className="p-4 font-bold text-red-600 text-sm">{formatCurrency(t.balance)}</td>
                   <td className="p-4">
                     <span className="px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">
                       MOROSO
@@ -139,7 +134,6 @@ export default function SistemaInmuebles({ currentUser, setCurrentUser }) {
     </div>
   );
 
-  // ─── Render de vistas ─────────────────────────────────
   const renderView = () => {
     if (role === ROLES.ADMIN) {
       return <AdminView />;
@@ -154,6 +148,10 @@ export default function SistemaInmuebles({ currentUser, setCurrentUser }) {
             onAdd={async (data) => {
               await addTenant(data);
               await fetchTenants();
+            }}
+            onDelete={async (id) => {
+              await removeTenant(id);
+              await Promise.all([fetchContracts(), fetchPayments(), fetchProperties()]);
             }}
             showAlert={showAlert}
           />
@@ -227,7 +225,6 @@ export default function SistemaInmuebles({ currentUser, setCurrentUser }) {
     return null;
   };
 
-  // ─── Layout principal ─────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50 flex">
       <Sidebar

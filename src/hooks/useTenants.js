@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { getTenants, createTenant, updateTenant, deleteTenant } from '../services/tenantService';
+import { getTenants, createTenant, updateTenant } from '../services/tenantService';
+import { deleteTenantCascade } from '../services/cascadeService';
 
 export const useTenants = () => {
   const [tenants, setTenants] = useState([]);
@@ -30,8 +31,9 @@ export const useTenants = () => {
     await fetchTenants();
   };
 
+  // Eliminación en cascada: contratos → pagos → arrendatario
   const removeTenant = async (id) => {
-    await deleteTenant(id);
+    await deleteTenantCascade(id);
     setTenants((prev) => prev.filter((t) => t.id !== id));
   };
 
