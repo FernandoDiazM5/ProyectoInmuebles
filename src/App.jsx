@@ -4,78 +4,85 @@ import { doc, getDoc } from 'firebase/firestore';
 import { Loader } from 'lucide-react';
 import { auth, db } from './services/firebase';
 import LoginView from './components/Auth/LoginView';
+import SetupView from './components/Auth/SetupView';
 import SistemaInmuebles from './components/SistemaInmuebles';
+
+// Estado de autenticación:
+//   'loading'          → esperando respuesta de Firebase
+//   'unauthenticated'  → sin sesión → mostrar Login
+//   'needs_setup'      → autenticado pero sin perfil en Firestore → mostrar Setup
+//   'authenticated'    → autenticado con perfil completo → mostrar Sistema
 
 function LoadingScreen() {
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center">
       <div className="text-center">
         <Loader className="w-10 h-10 animate-spin text-blue-600 mx-auto mb-3" />
-        <p className="text-slate-500 text-sm">Cargando...</p>
-      </div>
-    </div>
-  );
-}
-
-function ErrorScreen({ message, onRetry }) {
-  return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-xl shadow-xl max-w-md text-center">
-        <p className="text-red-600 font-medium mb-4">{message}</p>
-        <button onClick={onRetry}
-          className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition text-sm">
-          Reintentar
-        </button>
+        <p className="text-slate-500 text-sm">Cargando sistema…</p>
       </div>
     </div>
   );
 }
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [authState, setAuthState]       = useState('loading');   // ver estados arriba
+  const [firebaseUser, setFirebaseUser] = useState(null);        // objeto de Firebase Auth
+  const [currentUser, setCurrentUser]   = useState(null);        // perfil completo + rol
+
+  // Cargar (o recargar) el perfil desde Firestore
+  const loadProfile = async (fbUser) => {
+    if (!fbUser) { setAuthState('unauthenticated'); return; }
+
+    const snap = await getDoc(doc(db, 'users', fbUser.uid));
+
+    if (!snap.exists()) {
+      // Autenticado pero sin perfil → SetupView
+      setFirebaseUser(fbUser);
+      setAuthState('needs_setup');
+      return;
+    }
+
+    const data = snap.data();
+    setCurrentUser({
+      id:    fbUser.uid,
+      email: fbUser.email,
+      name:  data.name,
+      role:  data.role,          // 'agent' | 'tenant' | 'owner'
+      phone: data.phone || '',
+      ...data,
+    });
+    setAuthState('authenticated');
+  };
 
   useEffect(() => {
-    // Escucha el estado de autenticación. Se dispara en login, logout y al recargar.
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setError(null);
+    // Se dispara al iniciar, en login, logout y al recargar la página
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       try {
-        if (firebaseUser) {
-          // Usuario autenticado: obtener rol y perfil desde Firestore
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-          if (!userDoc.exists()) throw new Error('Perfil no encontrado. Contacte al administrador.');
-
-          const data = userDoc.data();
-          setCurrentUser({
-            id: firebaseUser.uid,
-            email: firebaseUser.email,
-            name: data.name,
-            role: data.role,   // 'agent' | 'tenant' | 'owner'
-            ...data,
-          });
-        } else {
-          // Sin sesión activa
-          setCurrentUser(null);
-        }
+        await loadProfile(fbUser);
       } catch (err) {
-        setError(err.message);
-        setCurrentUser(null);
-      } finally {
-        setLoading(false);
+        console.error('Auth error:', err);
+        setAuthState('unauthenticated');
       }
     });
-
-    return unsubscribe;  // Limpiar listener al desmontar
+    return unsubscribe;
   }, []);
 
-  if (loading) return <LoadingScreen />;
-  if (error) return <ErrorScreen message={error} onRetry={() => window.location.reload()} />;
+  // Handler que llama SetupView cuando el perfil se acaba de crear
+  const handleProfileCreated = async () => {
+    await loadProfile(firebaseUser);
+  };
 
-  // Sin sesión → pantalla de login
-  if (!currentUser) return <LoginView />;
+  // ── Render según estado ──────────────────────────────────────
+  if (authState === 'loading')         return <LoadingScreen />;
+  if (authState === 'unauthenticated') return <LoginView />;
+  if (authState === 'needs_setup')     return (
+    <SetupView
+      firebaseUser={firebaseUser}
+      onProfileCreated={handleProfileCreated}
+    />
+  );
 
-  // Con sesión → sistema principal (el rol define qué ve el usuario)
+  // authState === 'authenticated'
   return (
     <SistemaInmuebles
       currentUser={currentUser}
