@@ -36,18 +36,17 @@ jobs:
       # Deploy solo en push a main (no en PRs)
       - name: Deploy to Firebase Hosting
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
-          channelId: live
-          projectId: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+        run: |
+          npm install -g firebase-tools@latest
+          firebase deploy --only hosting --project ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
       # Preview deploy en Pull Requests
       - name: Deploy Preview (PR)
         if: github.event_name == 'pull_request'
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
-          projectId: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+        run: |
+          npm install -g firebase-tools@latest
+          firebase hosting:channel:deploy ${{ github.event.number }} --project ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
