@@ -11,7 +11,9 @@ export const PROPERTY_STATUS = {
   MAINTENANCE: 'MANTENIMIENTO',
 };
 
-export const PROPERTY_TYPES = ['Departamento', 'Casa', 'Oficina', 'Local'];
+/** Tipo único gestionado: departamentos en edificio / conjunto. */
+export const DEFAULT_PROPERTY_TYPE = 'Departamento';
+export const PROPERTY_TYPES = [DEFAULT_PROPERTY_TYPE];
 
 export const TENANT_STATUS = {
   UP_TO_DATE: 'AL DÍA',
@@ -43,8 +45,6 @@ export const CONTRACT_DURATIONS = [
   { label: '1 Año (12 Meses)', value: 12 },
   { label: '2 Años (24 Meses)', value: 24 },
 ];
-
-export const COLLECTION_GOAL_PERCENT = 92;
 
 // Timeouts de UI (en milisegundos)
 export const ALERT_TIMEOUT_MS = 4500;

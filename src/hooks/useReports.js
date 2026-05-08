@@ -2,10 +2,10 @@ import { useMemo } from 'react';
 import { buildReportMetrics, getTenantStatus } from '../services/reportService';
 import { CONTRACT_STATUS } from '../utils/constants';
 
-export const useReports = (tenants, contracts) => {
+export const useReports = (tenants, contracts, payments = []) => {
   const metrics = useMemo(
-    () => buildReportMetrics(tenants, contracts),
-    [tenants, contracts]
+    () => buildReportMetrics(tenants, contracts, payments),
+    [tenants, contracts, payments]
   );
 
   const tenantRows = useMemo(() =>

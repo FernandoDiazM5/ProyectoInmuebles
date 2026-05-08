@@ -31,7 +31,7 @@ export const useProperties = () => {
     await fetchProperties();
   };
 
-  // Eliminación en cascada: contratos → pagos → propiedad
+  // Eliminación en cascada: contratos → pagos → departamento (`properties`)
   const removeProperty = async (id) => {
     await deletePropertyCascade(id);
     setProperties((prev) => prev.filter((p) => p.id !== id));

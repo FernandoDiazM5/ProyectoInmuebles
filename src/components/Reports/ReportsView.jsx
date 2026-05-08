@@ -1,13 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { FileDown, Search, CheckCircle, AlertTriangle } from 'lucide-react';
+import { FileDown, Search } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { useReports } from '../../hooks/useReports';
-import { COLLECTION_GOAL_PERCENT, ROLES } from '../../utils/constants';
+import { ROLES } from '../../utils/constants';
 import { formatCurrency, formatDate, todayISO } from '../../utils/formatters';
 
-export default function ReportsView({ tenants, contracts, currentUserRole }) {
-  const { totalDue, totalPaid, totalPending, recoveryRate, meetsGoal, tenantRows } =
-    useReports(tenants, contracts);
+export default function ReportsView({ tenants, contracts, payments = [], currentUserRole }) {
+  const { totalDue, totalPaid, totalPending, recoveryRate, tenantRows } =
+    useReports(tenants, contracts, payments);
 
   const isOwner = currentUserRole === ROLES.OWNER;
   const [search, setSearch] = useState('');
@@ -49,7 +49,7 @@ export default function ReportsView({ tenants, contracts, currentUserRole }) {
       ['Total Esperado', formatCurrency(totalDue)],
       ['Total Recaudado', formatCurrency(totalPaid)],
       ['Total Pendiente', formatCurrency(totalPending)],
-      [`Tasa Cobranza (obj. ${COLLECTION_GOAL_PERCENT}%)`, `${recoveryRate}% ${meetsGoal ? '✓' : '⚠'}`],
+      ['Tasa de Cobranza', `${recoveryRate}%`],
     ];
 
     kpis.forEach(([label, value], i) => {
@@ -114,7 +114,7 @@ export default function ReportsView({ tenants, contracts, currentUserRole }) {
     <div>
       <div className="flex justify-between items-end mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">CUS06: Reportes de Cobranza</h2>
+          <h2 className="text-2xl font-bold text-slate-800">Reportes de Cobranza</h2>
           {isOwner && <p className="text-red-500 text-sm font-medium mt-1">Vista Restringida (Propietario)</p>}
         </div>
         <button
@@ -136,17 +136,13 @@ export default function ReportsView({ tenants, contracts, currentUserRole }) {
           <h4 className="text-2xl font-bold">{formatCurrency(totalPaid)}</h4>
         </div>
         <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-red-500">
-          <p className="text-slate-500 text-sm">Total Pendiente (Morosidad)</p>
+          <p className="text-slate-500 text-sm">Saldo pendiente por cobrar</p>
           <h4 className="text-2xl font-bold">{formatCurrency(totalPending)}</h4>
         </div>
         <div className="bg-slate-900 p-4 rounded-xl shadow-sm text-white">
-          <p className="text-slate-400 text-sm">Tasa de Cobranza (Obj. {COLLECTION_GOAL_PERCENT}%)</p>
-          <div className="flex items-end gap-2 mt-1">
-            <h4 className="text-3xl font-bold">{recoveryRate}%</h4>
-            {meetsGoal
-              ? <CheckCircle className="text-emerald-400 mb-1 w-5 h-5" />
-              : <AlertTriangle className="text-yellow-400 mb-1 w-5 h-5" />}
-          </div>
+          <p className="text-slate-400 text-sm">Tasa de Cobranza</p>
+          <h4 className="text-3xl font-bold mt-1">{recoveryRate}%</h4>
+          <p className="text-slate-500 text-xs mt-2">Porcentaje recaudado del total pactado este mes entre contratos activos.</p>
         </div>
       </div>
 

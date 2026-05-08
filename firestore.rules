@@ -43,7 +43,11 @@ service cloud.firestore {
 
     // ── Contratos ────────────────────────────────────────────
     match /contracts/{id} {
-      allow read:           if isAdmin() || isAgent() || isOwner();
+      allow read:           if isAdmin() || isAgent() || isOwner()
+                            || (isTenant()
+                                && resource.data.tenantId != null
+                                && userDoc().tenantId != null
+                                && resource.data.tenantId == userDoc().tenantId);
       allow create, update: if isAdmin() || isAgent();
       allow delete:         if isAdmin() || isAgent() || isOwner();
     }

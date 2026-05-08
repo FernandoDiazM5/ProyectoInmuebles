@@ -5,10 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:2229": "vite --port 2229",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "seed:admin": "node --env-file=.env.local scripts/createAdmin.mjs"
+    "seed:admin": "node --env-file=.env.local scripts/createAdmin.mjs",
+    "seed:properties": "node --env-file=.env scripts/seedProperties.mjs",
+    "seed:properties:extra": "node --env-file=.env scripts/seedProperties.mjs --extra-only",
+    "seed:properties:all": "node --env-file=.env scripts/seedProperties.mjs --with-extra",
+    "unify:property-addresses": "node --env-file=.env scripts/unifyPropertyAddresses.mjs",
+    "dedupe:property-numbers": "node --env-file=.env scripts/dedupePropertyDoorNumbers.mjs"
   },
   "dependencies": {
     "firebase": "^10.14.1",

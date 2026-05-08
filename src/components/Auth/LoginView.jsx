@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Loader, AlertCircle, Eye, EyeOff, UserPlus } from 'lucide-react';
+import { Home, Loader, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { loginUser } from '../../services/authService';
 
-export default function LoginView({ onRegister, authError }) {
+export default function LoginView({ authError }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -110,7 +110,7 @@ export default function LoginView({ onRegister, authError }) {
           </button>
         </form>
 
-        {/* Registro de arrendatario */}
+        {/* Registro de arrendatario — desactivado: no hay opción de crear cuenta desde el login
         <div className="mt-5 pt-5 border-t border-slate-100 text-center">
           <p className="text-sm text-slate-500 mb-2">¿Eres arrendatario y no tienes cuenta?</p>
           <button
@@ -122,6 +122,7 @@ export default function LoginView({ onRegister, authError }) {
             Registrarme como Arrendatario
           </button>
         </div>
+        */}
 
         {/* Credenciales de prueba — solo en development */}
         {import.meta.env.VITE_APP_ENV === 'development' && (

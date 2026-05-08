@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Users, FileText, CreditCard, BarChart, LogOut, Shield } from 'lucide-react';
+import { Home, Users, FileText, CreditCard, BarChart, LogOut, Shield, Warehouse } from 'lucide-react';
 import { ROLES } from '../../utils/constants';
 
 function SidebarItem({ icon, label, view, currentView, onClick }) {
@@ -57,6 +57,7 @@ export default function Sidebar({ currentUser, currentView, setCurrentView, onLo
         {role === ROLES.AGENT && (
           <>
             <SidebarItem icon={<Home />}       label="Dashboard"            view="dashboard"   currentView={currentView} onClick={setCurrentView} />
+            <SidebarItem icon={<Warehouse />}   label="Departamentos"         view="properties"  currentView={currentView} onClick={setCurrentView} />
             <SidebarItem icon={<Users />}      label="Arrendatarios"        view="tenants"     currentView={currentView} onClick={setCurrentView} />
             <SidebarItem icon={<FileText />}   label="Contratos"            view="contracts"   currentView={currentView} onClick={setCurrentView} />
             <SidebarItem icon={<CreditCard />} label="Pagos"                view="payments"    currentView={currentView} onClick={setCurrentView} />

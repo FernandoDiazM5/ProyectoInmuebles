@@ -6,13 +6,13 @@ import { auth, db } from './services/firebase';
 import { logoutUser } from './services/authService';
 import LoginView from './components/Auth/LoginView';
 import SetupView from './components/Auth/SetupView';
-import RegisterTenantView from './components/Auth/RegisterTenantView';
+// import RegisterTenantView from './components/Auth/RegisterTenantView';
 import SistemaInmuebles from './components/SistemaInmuebles';
 
 // Estados:
 //   'loading'         → esperando Firebase
 //   'unauthenticated' → sin sesión → Login
-//   'registering'     → usuario quiere crear cuenta de arrendatario
+//   'registering'     → (desactivado) crear cuenta de arrendatario desde login
 //   'needs_setup'     → autenticado pero sin perfil Firestore → Setup
 //   'authenticated'   → autenticado con perfil completo → Sistema
 
@@ -112,15 +112,14 @@ export default function App() {
   if (authState === 'auth_error')    return <AuthErrorScreen message={authError} onDismiss={dismissError} />;
 
   if (authState === 'unauthenticated') return (
-    <LoginView
-      onRegister={() => { setAuthError(''); setAuthState('registering'); }}
-      authError={authError}
-    />
+    <LoginView authError={authError} />
   );
 
+  /*
   if (authState === 'registering') return (
     <RegisterTenantView onBack={() => setAuthState('unauthenticated')} />
   );
+  */
 
   if (authState === 'needs_setup') return (
     <SetupView

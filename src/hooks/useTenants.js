@@ -21,9 +21,9 @@ export const useTenants = () => {
   }, []);
 
   const addTenant = async (data) => {
-    const id = await createTenant(data);
+    const result = await createTenant(data);
     await fetchTenants();
-    return id;
+    return result;
   };
 
   const editTenant = async (id, data) => {

@@ -8,7 +8,7 @@ import { unlinkFromProperty } from './tenantService';
 
 /**
  * Elimina un arrendatario en cascada:
- * contratos (activos liberan la propiedad) → pagos → arrendatario
+ * contratos (activos liberan el departamento) → pagos → arrendatario
  */
 export const deleteTenantCascade = async (tenantId) => {
   const contracts = await getContractsByTenant(tenantId);
@@ -28,8 +28,8 @@ export const deleteTenantCascade = async (tenantId) => {
 };
 
 /**
- * Elimina una propiedad en cascada:
- * contratos (activos desvinculan al arrendatario) → pagos → propiedad
+ * Elimina un departamento (documento en `properties`) en cascada:
+ * contratos (activos desvinculan al arrendatario) → pagos → registro de departamento
  */
 export const deletePropertyCascade = async (propertyId) => {
   const contracts = await getContractsByProperty(propertyId);
@@ -47,7 +47,7 @@ export const deletePropertyCascade = async (propertyId) => {
 
 /**
  * Elimina un contrato en cascada:
- * si está activo libera propiedad y arrendatario → pagos → contrato
+ * si está activo libera departamento y arrendatario → pagos → contrato
  */
 export const deleteContractCascade = async (contractId, propertyId, tenantId, status) => {
   if (status === CONTRACT_STATUS.ACTIVE) {

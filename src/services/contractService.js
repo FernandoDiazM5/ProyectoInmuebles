@@ -37,7 +37,7 @@ export const getActiveContractByTenant = async (tenantId) => {
   return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
 };
 
-// CUS02 - Crear contrato: valida entidades y vincula propiedad + arrendatario
+// CUS02 - Crear contrato: valida entidades y vincula departamento + arrendatario
 export const createContract = async ({ tenantId, propertyId, amount, duration }) => {
   // Integridad referencial: ambas entidades deben existir
   const [tenantSnap, propertySnap] = await Promise.all([
@@ -45,7 +45,7 @@ export const createContract = async ({ tenantId, propertyId, amount, duration })
     getDoc(doc(db, 'properties', propertyId)),
   ]);
   if (!tenantSnap.exists()) throw new Error('El arrendatario seleccionado no existe en la base de datos');
-  if (!propertySnap.exists()) throw new Error('La propiedad seleccionada no existe en la base de datos');
+  if (!propertySnap.exists()) throw new Error('El departamento seleccionado no existe en la base de datos');
 
   // Evita contrato duplicado activo para el mismo arrendatario
   const existing = await getActiveContractByTenant(tenantId);
@@ -69,15 +69,22 @@ export const createContract = async ({ tenantId, propertyId, amount, duration })
   await setPropertyRented(propertyId, tenantId);
   await linkToProperty(tenantId, propertyId, Number(amount));
 
-  return { id: ref.id, contractNumber };
+  return { id: ref.id, contractNumber, startDate };
 };
 
-// CUS03 - Terminar contrato (cambia estado, libera propiedad y arrendatario)
+// CUS03 - Terminar contrato (cambia estado, libera departamento y arrendatario)
 export const terminateContract = async (contractId, propertyId, tenantId) => {
+  const tenantSnap = await getDoc(doc(db, 'tenants', tenantId));
+  if (!tenantSnap.exists()) throw new Error('El arrendatario no existe en la base de datos');
+  const balance = Number(tenantSnap.data().balance ?? 0);
+  if (balance > 0) {
+    throw new Error('No se puede terminar el contrato: el arrendatario tiene saldo pendiente.');
+  }
+
   await updateDoc(doc(db, COL, contractId), {
     status: CONTRACT_STATUS.TERMINATED,
     updatedAt: serverTimestamp(),
   });
   await setPropertyAvailable(propertyId);
-  await unlinkFromProperty(tenantId);
+  await unlinkFromProperty(tenantId, { zeroBalance: true });
 };

@@ -3,6 +3,7 @@ import {
   signOut,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
+  updateProfile,
   getAuth,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -54,6 +55,28 @@ export const createUser = async (email, password, name, role, extraData = {}) =>
 // ---------- Restablecer contraseña ----------
 export const resetPassword = (email) => sendPasswordResetEmail(auth, email);
 
+/**
+ * Correo desde Firebase Authentication (plantilla «restablecer contraseña»).
+ * El cuerpo visible lo define usted en la consola; use %EMAIL% y %LINK% (ver ayuda en el modal de registro).
+ */
+export const sendTenantPasswordSetupEmail = async (email) => {
+  const normalized = email.trim().toLowerCase();
+  const prevLang = auth.languageCode;
+  auth.languageCode = 'es';
+  try {
+    await sendPasswordResetEmail(auth, normalized);
+  } catch (err) {
+    const messages = {
+      'auth/invalid-email': 'Correo electrónico no válido',
+      'auth/user-not-found': 'No existe el usuario para enviar el correo.',
+      'auth/too-many-requests': 'Demasiados envíos. Inténtelo más tarde.',
+    };
+    throw new Error(messages[err.code] || err.message || 'No se pudo enviar el correo desde Firebase.');
+  } finally {
+    auth.languageCode = prevLang ?? undefined;
+  }
+};
+
 // ---------- Crear usuario sin cerrar sesión del admin ----------
 // Usa una instancia secundaria de Firebase para no desautenticar al admin actual.
 export const createUserAdmin = async (email, password, name, role, extraData = {}) => {
@@ -63,6 +86,9 @@ export const createUserAdmin = async (email, password, name, role, extraData = {
 
   try {
     const credential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+    const displayLabel = String(name || '').trim() || email;
+    await updateProfile(credential.user, { displayName: displayLabel });
+
     await setDoc(doc(db, 'users', credential.user.uid), {
       email,
       name,
