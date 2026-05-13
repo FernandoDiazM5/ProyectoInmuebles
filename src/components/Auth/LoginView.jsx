@@ -130,7 +130,7 @@ export default function LoginView({ authError }) {
             <p className="font-semibold">Credenciales de prueba:</p>
             <p>Admin: admin@sistema.com / Admin123</p>
             <p>Agente: agente@test.com / Test123456</p>
-            <p>Inquilino: inquilino@test.com / Test123456</p>
+            <p>Inquilino: sen_6_12@hotmail.com / 48523451</p>
             <p>Propietario: propietario@test.com / Test123456</p>
           </div>
         )}

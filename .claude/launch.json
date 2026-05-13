@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "SGII — React Dev (puerto 3000)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "SGII — React Dev (puerto 2229)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:2229"],
+      "port": 2229
+    },
+    {
+      "name": "SGII — Vite Preview (build producción)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "preview"],
+      "port": 4173
+    },
+    {
+      "name": "VPN Backend — Express API (puerto 3001)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3001
+    }
+  ]
+}
