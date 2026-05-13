@@ -124,16 +124,14 @@ export default function LoginView({ authError }) {
         </div>
         */}
 
-        {/* Credenciales de prueba — solo en development */}
-        {import.meta.env.VITE_APP_ENV === 'development' && (
-          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 space-y-1">
-            <p className="font-semibold">Credenciales de prueba:</p>
-            <p>Admin: admin@sistema.com / Admin123</p>
-            <p>Agente: agente@test.com / Test123456</p>
-            <p>Inquilino: sen_6_12@hotmail.com / 48523451</p>
-            <p>Propietario: propietario@test.com / Test123456</p>
-          </div>
-        )}
+        {/* Credenciales de prueba */}
+        <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 space-y-1">
+          <p className="font-semibold">Credenciales de prueba:</p>
+          <p>Admin: admin@sistema.com / Admin123</p>
+          <p>Agente: agente@test.com / Test123456</p>
+          <p>Inquilino: sen_6_12@hotmail.com / 48523451</p>
+          <p>Propietario: propietario@test.com / Test123456</p>
+        </div>
       </div>
     </div>
   );
